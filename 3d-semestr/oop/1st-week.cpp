@@ -8,54 +8,72 @@
 using namespace std;
 
 
-int main()
+class Fraction {
+protected:
+    int numerator;
+    int denominator;
+public:
+    Fraction(int numerator = 0, int denominator = 1) : numerator(numerator), denominator(denominator) {};
+    friend ostream& operator<<(ostream& out, const Fraction& f);
+};
+
+ostream& operator<<(ostream& out, const Fraction& f) {
+    out << f.numerator << "/" << f.denominator;
+    return out;
+}
+
+
+template <class T>
+void push(list<T>& l, const T& t)
 {
-    vector <int> v;
-    for (int i = 0; i < 10; i++)
-        v.push_back(i);
-    for (int i = 0; i < 10; i++)
-        cout << v[i] << " ";
-    cout << '\n';
-    list<int> l;
-    for (int i = 0; i < 10; i++)
-        l.push_back(i);
     list<int>::iterator it = l.begin();
-    while (it != l.end())
+    while (it!= l.end())
     {
-        cout << *it << ' ';
+        if (*it > t)
+        {
+            l.insert(it, t);
+            return;
+        }
         it++;
     }
+    l.insert(it, t);
+}
 
-    cout << '\n';
-    do
-        cout << *--it << ' ';
-    while (it != l.begin());
-    cout << '\n';
+template <class T>
+void pop(list<T>& l, const T& index = -1)
+{
+    if (index == -1)
+        l.erase(l.end()--);
+    list<int>::iterator it = l.begin();
+    for (int i = 0; i < index; i++, it++)
+        if (it == l.end()) return;
+    l.erase(it);
+}
 
-    map <string, int> marks;
-    marks["ivanov"] = 5; 
-    marks["petrov"] = 4; 
-    marks["sidorov"] = 3; 
-    marks["kuznetsov"] = 4; 
-    marks["karpov"] = 4; 
-
-    map<string, int>::iterator it_m = marks.begin();
-    while (it_m != marks.end())
+template <class T>
+void print(list<T>& l)
+{
+    list<int>::iterator it = l.begin();
+    while (it!= l.end())
     {
-        cout << it_m->first << ": " << it_m->second << '\n';
-        it_m++;
+        cout << *it << " ";
+        it++;
     }
+    cout << endl;
+}
 
-    set<int> test_set;
-    for (int i = 0; i<10; i++)
-        for (int j=0; j < 10; j++)
-            test_set.insert(i);
-    set<int>::iterator it_set = test_set.begin(); cout << test_set.size() << ": ";
-    while (it_set != test_set.end())
-    {
-        cout << *it_set<< ' ';
-        it_set++;
-    }
-
+int main()
+{
+    list<int> l;
+    push(l, 5);
+    push(l, 20);
+    push(l, 88);
+    push(l, 1);
+    push(l, 15);
+    push(l, 6);
+    push(l, -3);
+    print(l);
+    pop(l, 4);
+    print(l);
     return 0;
 }
