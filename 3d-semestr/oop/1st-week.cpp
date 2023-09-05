@@ -26,7 +26,7 @@ ostream& operator<<(ostream& out, const Fraction& f) {
 template <class T>
 void push(list<T>& l, const T& t)
 {
-    list<int>::iterator it = l.begin();
+    typename list<T>::iterator it = l.begin();
     while (it!= l.end())
     {
         if (*it > t)
@@ -44,7 +44,7 @@ void pop(list<T>& l, const T& index = -1)
 {
     if (index == -1)
         l.erase(l.end()--);
-    list<int>::iterator it = l.begin();
+    typename list<T>::iterator it = l.begin();
     for (int i = 0; i < index; i++, it++)
         if (it == l.end()) return;
     l.erase(it);
@@ -53,7 +53,7 @@ void pop(list<T>& l, const T& index = -1)
 template <class T>
 void print(list<T>& l)
 {
-    list<int>::iterator it = l.begin();
+    typename list<T>::iterator it = l.begin();
     while (it!= l.end())
     {
         cout << *it << " ";
