@@ -1,3 +1,6 @@
+//Лазарев Александр КМБО-03-22 ВАРИАНТ 15
+//Практическая 1.1 и 1.2
+
 #include <iostream>
 #include <list>
 #include <string>
