@@ -138,10 +138,10 @@ ostream& operator<<(ostream& out, const SportTeam& s)
 }
 
 template <class T>
-void push(list<T>& l, const T& t)
+void push(list<T>& l, const T& t, bool reversed = false)
 {
     typename list<T>::iterator it = l.begin();
-    if (typeid(T) == typeid(SportTeam))
+    if (reversed)
     {
         while (it!= l.end())
         {
@@ -167,18 +167,22 @@ void push(list<T>& l, const T& t)
         }
         l.insert(it, t);
     }
+}
 
+void push(list<SportTeam>& l, const SportTeam& t)
+{
+    push(l, t, true);
 }
 
 template <class T>
-void pop(list<T>& l, T elem)
+T pop(list<T>& l)
 {
-    for (typename list<T>::iterator it = l.begin(); it != l.end(); it++)
-        if (*it == elem)
-        {
-            l.erase(it);
-            return;
-        }
+    typename list<T>::iterator it1 = l.begin();
+    typename list<T>::iterator it2 = l.end();
+    T bbegin = *it1;
+    T eend = *--it2;
+    if (*it1 > *it2) { l.erase(it1); return bbegin; } 
+    l.erase(it2); return eend; 
 }
 
 template <class T>
@@ -213,10 +217,11 @@ int main()
     push(l, Fraction(6, 5));
     push(l, Fraction(-15, 19));
     push(l, Fraction(2, 5));
+
     cout << l << '\n';
-    pop(l, Fraction(-10, 1));
-    cout << l << '\n';
-    cout << filter(l, 0.5) << "\n\n";
+    cout << "\nPopped: "<< pop(l) << "\n\n";
+    cout << "After pop: " << l << '\n';
+    cout << "Filtered list with a=0.5: " << filter(l, 0.5) << "\n\n";
 
     list<SportTeam> teams;
     push(teams, SportTeam("Lions", "City1", 10, 5, 3, 30));
@@ -229,7 +234,7 @@ int main()
 
     cout << teams << '\n';
 
-    pop(teams, SportTeam("Dolphins", "City6", 6, 6, 6, 24));
+    cout << "Popped: " << pop(teams) << "\n\n";
     cout << teams << '\n';
 
     return 0;
