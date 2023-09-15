@@ -4,7 +4,7 @@
 #include <cstring>
 
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations" //Вырубает предупреждение про итераторы
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"//Вырубает предупреждение про итераторы
 
 using namespace std;
 
