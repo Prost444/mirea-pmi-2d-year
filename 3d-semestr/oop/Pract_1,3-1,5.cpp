@@ -218,9 +218,6 @@ class IteratedLinkedList : public LinkedListParent<T>
 public:
 	IteratedLinkedList() : LinkedListParent<T>() { cout << "\nIteratedLinkedList constructor"; }
 	virtual ~IteratedLinkedList() { cout << "\nIteratedLinkedList destructor"; }
-
-	ListIterator<T> iterator;
-
 	ListIterator<T> begin() { ListIterator<T> it = LinkedListParent<T>::head; return it; }
 	ListIterator<T> end() { ListIterator<T> it = LinkedListParent<T>::tail; return it; }
 	template <class T1> friend ostream& operator<< (ostream& ustream, IteratedLinkedList<T1>& obj);
