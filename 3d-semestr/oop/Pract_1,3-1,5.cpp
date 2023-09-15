@@ -3,7 +3,8 @@
 #include <fstream>
 #include <cstring>
 
-#pragma warning(disable : 4996) //Вырубает предупреждение про итераторы
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations" //Вырубает предупреждение про итераторы
 
 using namespace std;
 
@@ -46,6 +47,70 @@ public:
 		cout << "IteratorException: " << str << "; " << what();
 	}
 };
+
+
+class Fraction {
+protected:
+    int numerator;
+    int denominator;
+
+public:
+
+    Fraction(int numerator = 0, int denominator = 1) : numerator(numerator), denominator(denominator) {};
+
+    bool operator > (Fraction other) {
+        return numerator*other.denominator > other.numerator*denominator; }
+    bool operator < (Fraction other) {
+        return numerator*other.denominator < other.numerator*denominator; }
+    bool operator >= (Fraction other) {
+        return numerator*other.denominator >= other.numerator*denominator; }
+    bool operator <= (Fraction other) {
+        return numerator*other.denominator <= other.numerator*denominator; }
+    bool operator == (Fraction other) {
+        return numerator*other.denominator == other.numerator*denominator; }
+    bool operator!= (Fraction other) {
+        return numerator*other.denominator!= other.numerator*denominator; }
+
+    bool operator > (int other) {
+        return numerator > other*denominator; }
+    bool operator < (int other) {
+        return numerator < other*denominator; }
+    bool operator >= (int other) {
+        return numerator >= other*denominator; }
+    bool operator <= (int other) {
+        return numerator <= other*denominator; }
+    bool operator == (int other) {
+        return numerator == other*denominator; }
+    bool operator!= (int other) {
+        return numerator!= other*denominator; }
+
+    bool operator > (double other) {
+        return numerator > other*denominator; }
+    bool operator < (double other) {
+        return numerator < other*denominator; }
+    bool operator >= (double other) {
+        return numerator >= other*denominator; }
+    bool operator <= (double other) {
+        return numerator <= other*denominator; }
+    bool operator == (double other) {
+        return numerator == other*denominator; }
+    bool operator!= (double other) {
+        return numerator!= other*denominator; }
+
+
+    friend ostream& operator<<(ostream& out, const Fraction& f);
+    friend Fraction abs(Fraction f);
+};
+
+
+ostream& operator<<(ostream& out, const Fraction& f) 
+{
+    out << f.numerator << "/" << f.denominator;
+    return out;
+}
+
+
+Fraction abs(Fraction f) { return Fraction(abs(f.numerator), abs(f.denominator)); }
 
 
 template <class T>
@@ -135,6 +200,13 @@ public:
 			cur = cur->getNext();
 		}
 		return cur;
+	}
+
+	virtual void UniversalFilter(LinkedListParent<T>* list, bool (*filter)(T))
+	{
+		for (Element<T>* current = head; current != NULL; current = current->getNext())
+			if (filter(current->getValue()))
+				list->push(current->getValue());
 	}
 
 	template<class T1> friend ostream& operator<< (ostream& ustream, LinkedListParent<T1>& obj);
@@ -352,6 +424,16 @@ public:
 		return x;
 	}
 
+	Queue<T> Filter(bool (*filter)(T))
+	{
+		Queue<T> ans;
+		//cout << *this;
+		for (Element<T>* current = this->head; current != NULL; current = current->getNext())
+			if (filter(current->getValue()))
+				ans.push(current->getValue());
+		return(ans);
+	}
+
 };
 
 template <class T>
@@ -370,16 +452,16 @@ public:
 		if (it == this->begin())
 		{
 			x->setNext(this->head);
-            this->head->setPrevious(x);
+            (*this->begin()).setPrevious(x);
             this->head = x;
 			this->num++;
             return x;
 		}
 		x->setNext(it.ptr);
 		x->setPrevious((--it).ptr);
-		it.ptr->setNext(x);
+		(*it).setNext(x);
 		(it++)++;
-		it.ptr->setPrevious(x);
+		(*it).setPrevious(x);
 		this->num++;
 		return x;
 	}
@@ -447,50 +529,38 @@ public:
     Element<SportTeam>* push(SportTeam obj)
 	{
 		Element<SportTeam>* x = new Element<SportTeam>(obj);
-		ListIterator<SportTeam> it = begin();
-		if (begin() == NULL)
+		ListIterator<SportTeam> it = this->begin();
+		while (it!=NULL && (*it).getValue()>obj)
+			it++;
+
+		if (it == NULL)
 		{
-			this->head = x;
-			this->tail = this->head;
-			this->num++;
-			return x;
-		}
-		if (obj > (*it).getValue())
-		{
-			x->setNext(this->head);
-            this->head->setPrevious(x);
-            this->head = x;
-            this->num++;
-            return x;
-		}
-		while (it!= end())
-        {
-            if ((*it).getValue() < obj)
-            {
-                x->setNext(it.ptr);
-				x->setPrevious((--it).ptr);
-				it.ptr->setNext(x);
-				(it++)++;
-				it.ptr->setPrevious(x);
+			if (it == this->begin())
+			{
+                this->head = x;
+                this->tail = x;
 				this->num++;
 				return x;
-            }
-            it++;
-        }
-		if ((*it).getValue() < obj)
-        {
-            x->setNext(it.ptr);
-			x->setPrevious((--it).ptr);
-			it.ptr->setNext(x);
-			(it++)++;
-			it.ptr->setPrevious(x);
+			}
+			this->tail->setNext(x);
+			x->setPrevious(this->tail);
+			this->tail = x;
 			this->num++;
 			return x;
-        }
-        x->setNext(NULL);
-		x->setPrevious(this->tail);
-		this->tail->setNext(x);
-		this->tail = x;
+		}
+		if (it == this->begin())
+		{
+			(*it).setPrevious(x);
+			x->setNext(this->head);
+			this->head = x;
+			this->num++;
+			return x;	
+		}
+		x->setNext(it.ptr);
+		x->setPrevious((--it).ptr);
+		(*it).setNext(x);
+		(it++)++;
+		(*it).setPrevious(x);
 		this->num++;
 		return x;
 	}
@@ -498,60 +568,35 @@ public:
 	SportTeam pop()
 	{
 		SportTeam x;
-		Element<SportTeam>* next;
-		x = (*begin()).getValue();
-		next = (begin()++).ptr;
+		ListIterator<SportTeam> next = this->begin()++;
+		x = (*(this->begin())).getValue();
 		if (this->num>1)
 		{
-			next->setPrevious(NULL);
+			(*next).setPrevious(NULL);
 			this->head->setNext(NULL);
 		}
 		else
 			this->tail = NULL;
-			this->head = next;
-			this->num--;
-			return x;
+		this->head = next.ptr;
+		this->num--;
+		return x;
 	}
-    
-
 };
+
+
+bool FractionFilter(Fraction f)
+{
+	double a=0.5;
+	return abs(f) < a;
+}
+
 
 int main()
 {
 	try
 	{
-		/*Stack<int> S;
-		S.push(1);
-		cout << S.Number();
-		S.push(2);
-		cout << S.Number();
-		S.push(3);
-		cout << S.Number();
-		cout << S;
-		cout << "\n";
-		int e1 = S.pop();
-		cout << "\nElement = " << e1;
-		cout << S;
-		cout << "\nIndex in the Stack class: " << S[1]->getValue();
-
-		int e2 = S.pop();
-		cout << "\nElement = " << e2;
-		cout << S;
-		int e3 = S.pop();
-		cout << "\nElement = " << e3;
-		cout << S;
-
-		cout << "\nIterators:\n";
-		S.iterator = S.begin();
-		while (S.iterator != S.end())
-		{
-			cout << *S.iterator << " ";
-			S.iterator++;
-		}
-		cout << *S.iterator << " ";*/
-
-		cout << "Demonstation of the queue work:\n";
 		Queue<int> Q;
+		cout << "\n\nDemonstation of the queue work:\n";
 		Q.push(1);
 		cout << Q << "\n";
 		Q.push(2);
@@ -568,6 +613,24 @@ int main()
 		Q.pop();
 		cout << Q << "\n";
 
+		Queue<Fraction> l;
+		l.push(Fraction(1, 2));
+		l.push(Fraction(7, 3));
+		l.push(Fraction(-1, 5));
+		l.push(Fraction(-10, 1));
+		l.push(Fraction(6, 5));
+		l.push(Fraction(-15, 19));
+		l.push(Fraction(2, 5));
+
+		Queue<Fraction> filtered = l.Filter(FractionFilter);
+
+		cout << "\n\nnew Queue:" << l << "\n";
+		cout << "Filered Queue:\n"<< filtered;
+
+		Stack<Fraction> *filtered2 = new Stack<Fraction>;
+		l.UniversalFilter(filtered2, FractionFilter);
+		cout << "\nnew Stack with filtered values from Queue:\n" << *filtered2 << "\n";
+
 		cout << "\nDemonstation of the sorted queue work:\n";
 		SortedQueue<int> QS;
 		QS.push(5);
@@ -578,8 +641,8 @@ int main()
 
         cout << "\npush with use of iterators:\n";
 		SortedQueueSportTeam teams;
-		teams.push(SportTeam("Lions", "City1", 10, 5, 3, 30));
-		teams.push(SportTeam("Tigers", "City2", 8, 7, 2, 29));
+		teams.push(SportTeam("Lions", "City1", 10, 5, 3, 30)); cout << teams << '\n';
+		teams.push(SportTeam("Tigers", "City2", 8, 7, 2, 29)); cout << teams << '\n';
 		teams.push(SportTeam("Bears", "City3", 12, 3, 2, 35));
 		teams.push(SportTeam("Eagles", "City4", 8, 7, 2, 29));
 		teams.push(SportTeam("Wolves", "City5", 10, 5, 3, 30));
