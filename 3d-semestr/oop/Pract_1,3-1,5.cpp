@@ -186,6 +186,14 @@ public:
 	{
 		//деструктор - освобождение памяти
 		cout << "\nParent destructor";
+		Element<T>* cur = head;
+		while (cur != NULL)
+		{
+			Element<T>* next = cur->getNext();
+			//cout << "\ndeleted: " << *cur;
+			delete cur;
+			cur = next;
+		}
 	}
 
 	//получение элемента по индексу - какова асимптотическая оценка этого действия?
@@ -194,7 +202,6 @@ public:
 		//индексация
 		if (i<0 || i>num) return NULL;
 		int k = 0;
-
 		//ищем i-й элемент - вставем в начало и отсчитываем i шагов вперед
 		Element<T>* cur = head;
 		for (k = 0; k < i; k++)
@@ -429,7 +436,6 @@ public:
 	Queue<T> Filter(bool (*filter)(T))
 	{
 		Queue<T> ans;
-		//cout << *this;
 		for (Element<T>* current = this->head; current != NULL; current = current->getNext())
 			if (filter(current->getValue()))
 				ans.push(current->getValue());
