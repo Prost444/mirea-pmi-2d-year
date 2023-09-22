@@ -1,410 +1,193 @@
-
 #include <iostream>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
 
 using namespace std;
-//узел
-template<class T>
-class Node
+
+class MapExeption : public exception
 {
 protected:
-	//закрытые переменные Node N; N.data = 10 вызовет ошибку
-	T data;
-
-	//не можем хранить Node, но имеем право хранить указатель
-	Node* left;
-	Node* right;
-	Node* parent;
-
-	//переменная, необходимая для поддержания баланса дерева
-	int height;
+	//сообщение об ошибке
+	char* str;
 public:
-	//доступные извне переменные и функции
-	virtual void setData(T d) { data = d; }
-	virtual T getData() { return data; }
-	int getHeight() { return height; }
-
-	virtual Node* getLeft() { return left; }
-	virtual Node* getRight() { return right; }
-	virtual Node* getParent() { return parent; }
-
-	virtual void setLeft(Node* N) { left = N; }
-	virtual void setRight(Node* N) { right = N; }
-	virtual void setParent(Node* N) { parent = N; }
-
-	//Конструктор. Устанавливаем стартовые значения для указателей
-	Node<T>(T n)
+	MapExeption(const char* s)
 	{
-		data = n;
-		left = right = parent = NULL;
-		height = 1;
+		str = new char[strlen(s) + 1];
+		strcpy(str, s);
+	}
+	MapExeption(const MapExeption& e)
+	{
+		str = new char[strlen(e.str) + 1];
+		strcpy(str, e.str);
+	}
+	~MapExeption()
+	{
+		delete[] str;
 	}
 
-	Node<T>()
-	{
-		left = NULL;
-		right = NULL;
-		parent = NULL;
-		height = 1;
-	}
-
-
+	//функцию вывода можно будет переопределить в производных классах, когда будет ясна конкретика
 	virtual void print()
 	{
-		cout << "\n" << data;
-	}
-
-	virtual void setHeight(int h)
-	{
-		height = h;
-	}
-
-	template<class T> friend ostream& operator<< (ostream& stream, Node<T>& N);
-
-	Node* successor()
-	{
-		Node<T>* current = right;
-		if (right != NULL)
-		{
-			for (; current->left != NULL; current = current->left);
-			return current;
-		}
-		else
-		{
-			if (parent == NULL) return NULL;
-			current = parent;	//для минимума
-			if (current->data > data)
-				return current;
-
-			for (; current->parent != NULL and current->data < data; current = current->parent);
-			if (current->parent == NULL)
-				if (current->data > data)
-					return current;
-				else
-					return NULL;
-			return current;
-		}
-	}
-	Node* predecessor()
-	{
-		return NULL;
+		cout << "MapExeption: " << str << "; " << what();
 	}
 };
 
-template<class T>
-ostream& operator<< (ostream& stream, Node<T>& N)
+class MapKeyExeption : public MapExeption
 {
-	stream << "\nNode data: " << N.data << ", height: " << N.height;
-	return stream;
+public:
+    MapKeyExeption(const char* s) : MapExeption(s) {}
+    MapKeyExeption(const MapKeyExeption& e) : MapExeption(e) {}
+	virtual void print()
+	{
+		cout << "MapKeyExeption: " << str << "; " << what();
+	}
+};
+
+//Пишем свое добавление элемента для обработки исключения
+template<class K, class V>
+typename map<K, V>::iterator addItem(map<K, V>& m,  K key, V value) 
+{
+    if (m.find(key) != m.end())
+        throw MapKeyExeption("Element with this key already exists.");
+    m[key] = value;
+    return m.find(key);
 }
-template<class T>
-void print(Node<T>* N) { cout << "\n" << N->getData(); }
 
-template<class T>
-class Tree
+// Функция для поиска элемента по ключу
+template<class K, class V>
+V findValueByKey(map<K, V> m, K key) 
 {
+    typename map<K, V>::iterator it = m.find(key);
+    if (it != m.end())
+        return it->second;
+    throw MapKeyExeption("Element with this key does not exist.");
+}
+
+// Функция для поиска ключей по значению
+template<class K, class V>
+set<K> findKeysByValue(map<K, V> m, V value) 
+{
+    set<K> keys;
+    for (typename map<K, V>::iterator it = m.begin(); it != m.end(); it++)
+        if (it->second == value)
+            keys.insert(it->first);
+    return keys;
+}
+
+//Вывод с помощью итератора
+template<class K, class V>
+ostream& operator << (ostream& ustream, map<K, V> m)
+{
+    for (typename map<K, V>::iterator it = m.begin(); it != m.end(); it++)
+        ustream << "map[" << it->first << "]: " << it->second << ";\n";
+    return ustream;
+}
+
+//Фильтр
+template<class K, class V, class T>
+map<K, V> filter(map<K, V> m, bool (*predicate)(V, T), T threshold)
+{
+    map<K, V> res;
+    for (typename map<K, V>::iterator it = m.begin(); it != m.end(); it++)
+        if (predicate(it->second, threshold))
+            addItem(res, it->first, it->second);
+    return res;
+}
+
+//Все встречающиеся в дереве элементы
+template<class K, class V>
+vector<V> getUniqueValues(map<K, V> m)
+{
+    vector<V> vals;
+    for (typename map<K, V>::iterator it = m.begin(); it != m.end(); it++)
+    {
+        V cur = it->second;
+        bool flag = true;
+        for (int i = 0; i < vals.size(); i++)
+        {
+            if (vals[i] == cur)
+            {
+                flag = false;
+                break;
+            }
+        }
+        if (flag)
+            vals.push_back(it->second);
+    }
+    return vals;
+}
+
+class Statistics {
 protected:
-	//корень - его достаточно для хранения всего дерева
-	Node<T>* root;
+    int num_wins;
+    int num_draws;
+    int num_losses;
+    int score;
 
-	virtual Node<T>* push_R(Node<T>* N, Node<T>* Current)
-	{
-		//не передан добавляемый узел
-		if (N == NULL) return NULL;
-
-		//пустое дерево - добавляем в корень
-		if (root == NULL) { root = N; return N; }
-
-		if (Current->getData() > N->getData())
-		{
-			//идем влево
-			if (Current->getLeft() != NULL) return push_R(N, Current->getLeft());
-			else { Current->setLeft(N); N->setParent(Current); }
-		}
-		if (Current->getData() < N->getData())
-		{
-			//идем вправо
-			if (Current->getRight() != NULL) return push_R(N, Current->getRight());
-			else { Current->setRight(N); N->setParent(Current); }
-		}
-		//if (Current->getData() == N->getData()) ?
-		//вернуть добавленный узел
-		return N;
-	}
-
-	//поиск узла в дереве. Второй параметр - в каком поддереве искать, первый - что искать
-	virtual Node<T>* Find_R(T data, Node<T>* Current)
-	{
-		//база рекурсии
-		if (Current == NULL) return NULL;
-
-		if (Current->getData() == data) return Current;
-
-		//рекурсивный вызов
-		if (Current->getData() > data) return Find_R(data, Current->getLeft());
-
-		if (Current->getData() < data) return Find_R(data, Current->getRight());
-
-
-	}
 public:
-	//доступ к корневому элементу
-	virtual Node<T>* getRoot() { return root; }
+    Statistics(int num_wins=0, int num_draws=0, int num_losses=0, int score=0) :
+    num_wins(num_wins), num_draws(num_draws), num_losses(num_losses), score(score) {};
 
-	//конструктор дерева: в момент создания дерева ни одного узла нет, корень смотрит в никуда
-	Tree<T>() { root = NULL; }
+    bool operator == (const Statistics other) {
+        return num_wins == other.num_wins && num_draws == other.num_draws && num_losses == other.num_losses && score == other.score;}
 
-	//рекуррентная функция добавления узла. Устроена аналогично, но вызывает сама себя - добавление в левое или правое поддерево
-	virtual Node<T>* push(Node<T>* N)
-	{
-		return push_R(N, root);
-	}
-
-	//функция для добавления числа. Делаем новый узел с этими данными и вызываем нужную функцию добавления в дерево
-	virtual Node<T>* push(T n)
-	{
-		Node<T>* N = new Node<T>;
-		N->setData(n);
-		return push(N);
-	}
-
-	//удаление узла
-	virtual void Remove(Node<T>* N)
-	{ }
-
-	virtual Node<T>* Min(Node<T>* Current = NULL)
-	{
-		//минимум - это самый "левый" узел. Идём по дереву всегда влево
-		if (root == NULL) return NULL;
-
-		if (Current == NULL)
-			Current = root;
-		for (; Current->getLeft() != NULL; Current = Current->getLeft());
-		return Current;
-
-	}
-
-	virtual Node<T>* Max(Node<T>* Current = NULL)
-	{
-		//максимум - это самый "правый" узел. Идём по дереву всегда вправо
-		if (root == NULL) return NULL;
-		if (Current == NULL) Current = root;
-		for (; Current->getRight() != NULL; Current = Current->getRight());
-		return Current;
-		
-	}
-
-
-	virtual Node<T>* Find(T data)
-	{
-		return Find_R(data, root);
-	}
-
-	//три обхода дерева
-	virtual void PreOrder(Node<T>* N, void (*f)(Node<T>*))
-	{
-		if (N != NULL)
-			f(N);
-		if (N != NULL && N->getLeft() != NULL)
-			PreOrder(N->getLeft(), f);
-		if (N != NULL && N->getRight() != NULL)
-			PreOrder(N->getRight(), f);
-	}
-
-	//InOrder-обход даст отсортированную последовательность
-	virtual void InOrder(Node<T>* N, void (*f)(Node<T>*))
-	{
-		if (N != NULL && N->getLeft() != NULL)
-			InOrder(N->getLeft(), f);
-		if (N != NULL)
-			f(N);
-		if (N != NULL && N->getRight() != NULL)
-			InOrder(N->getRight(), f);
-	}
-
-	virtual void PostOrder(Node<T>* N, void (*f)(Node<T>*))
-	{
-		if (N != NULL && N->getLeft() != NULL)
-			PostOrder(N->getLeft(), f);
-		if (N != NULL && N->getRight() != NULL)
-			PostOrder(N->getRight(), f);
-		if (N != NULL)
-			f(N);
-	}
+    friend ostream& operator<<(ostream& out, const Statistics& s);
+    friend bool TeamsFilter (Statistics t, int threshold);
 };
 
-template<class T>
-class AVL_Tree : public Tree<T>
+
+
+ostream& operator<<(ostream& out, const Statistics& s) 
 {
-protected:
-	//определение разности высот двух поддеревьев
-	int bfactor(Node<T>* p)
-	{
-		int hl = 0;
-		int hr = 0;
-		if (p->getLeft() != NULL)
-			hl = p->getLeft()->getHeight();
-		if (p->getRight() != NULL)
-			hr = p->getRight()->getHeight();
-		return (hr - hl);
-	}
+    out << "побед: " << s.num_wins << ", ничьич: " << s.num_draws << ", поражений: " << s.num_losses << ", очков: " << s.score;
+    return out;
+}
 
-	//при добавлении узлов в них нет информации о балансе, т.к. не ясно, куда в дереве они попадут
-	//после добавления узла рассчитываем его высоту (расстояние до корня) и редактируем высоты в узлах, где это
-	//значение могло поменяться
-	void fixHeight(Node<T>* p)
-	{
-		int hl = 0;
-		int hr = 0;
-		if (p->getLeft() != NULL)
-			hl = p->getLeft()->getHeight();
-		if (p->getRight() != NULL)
-			hr = p->getRight()->getHeight();
-		p->setHeight((hl > hr ? hl : hr) + 1);
-	}
-
-	//краеугольные камни АВЛ-деревьев - процедуры поворотов
-	Node<T>* RotateRight(Node<T>* p) // правый поворот вокруг p
-	{
-		Node<T>* q = p->getLeft();
-		
-		fixHeight(p);
-		fixHeight(q);
-		return q;
-	}
-
-	Node<T>* RotateLeft(Node<T>* q) // левый поворот вокруг q
-	{
-		Node<T>* p = q->getRight();
-		
-		fixHeight(q);
-		fixHeight(p);
-		return p;
-	}
-
-	//балансировка поддерева узла p - вызов нужных поворотов в зависимости от показателя баланса
-	Node<T>* Balance(Node<T>* p) // балансировка узла p
-	{
-		fixHeight(p);
-		if (bfactor(p) == 2)
-		{
-			
-		}
-		if (bfactor(p) == -2)
-		{
-			
-		}
-
-		return p; // балансировка не нужна
-	}
-
-public:
-	//конструктор AVL_Tree вызывает конструктор базового класса Tree
-	AVL_Tree<T>() : Tree<T>() {}
-
-	virtual Node<T>* push_R(Node<T>* N)
-	{
-		return push_R(N, Tree<T>::root);
-	}
-
-	//рекуррентная функция добавления узла. Устроена аналогично, но вызывает сама себя - добавление в левое или правое поддерево
-	virtual Node<T>* push_R(Node<T>* N, Node<T>* Current)
-	{
-		//вызываем функцию push_R из базового класса
-		Node<T>* pushedNode = Tree<T>::push_R(N, Current);
-		//применяем к добавленному узлу балансировку
-		if (Current != NULL)
-			return Balance(Current);
-		return pushedNode;
-	}
-
-	//функция для добавления числа. Делаем новый узел с этими данными и вызываем нужную функцию добавления в дерево
-	virtual Node<T>* push(T n)
-	{
-		Node<T>* N = new Node<T>;
-		N->setData(n);
-		return push_R(N);
-	}
-
-	//удаление узла
-	virtual void Remove(Node<T>* N)
-	{ }
-};
-
-
-//класс итератор по дереву
-template<typename ValueType>
-class TreeIterator : public std::iterator<std::input_iterator_tag, ValueType>
+template <class T>
+ostream& operator<<(ostream& out, const set<T>& s)
 {
-private:
+    for (typename set<T>::iterator it = s.begin(); it != s.end(); it++)
+        out << *it << ", ";
+    return out;
+}
 
-public:
-	Node<ValueType>* ptr;
-
-	TreeIterator() { ptr = NULL; }
-	TreeIterator(Node<ValueType>* p) { ptr = p; }
-	TreeIterator(const TreeIterator& it) { ptr = it.ptr; }
-
-	TreeIterator& operator=(const TreeIterator& it) { ptr = it.ptr; return *this ; }
-	TreeIterator& operator=(Node<ValueType>* p) { ptr = p; return *this;  }
-
-	bool operator!=(TreeIterator const& other) const { return ptr != other.ptr; }
-	bool operator==(TreeIterator const& other) const { return ptr == other.ptr; }
-	Node<ValueType>& operator*() { return *ptr; }
-	TreeIterator& operator++() //++p;
-	{
-		if(ptr!=NULL) ptr = ptr->successor();
-		return *this;
-	}
-	TreeIterator operator++(int v) //p++;
-	{
-		Node<ValueType>* p = ptr;
-		if (ptr != NULL) ptr = ptr->successor();
-		return TreeIterator(p);
-	}
-};
-
-//класс итерируемое дерево поиска
-template<class T>
-class IteratedTree : public AVL_Tree<T>
+template <class T>
+ostream& operator<<(ostream& out, const vector<T>& s)
 {
-public:
-	IteratedTree<T>() : AVL_Tree<T>() {}
+    for (int i = 0; i < s.size(); i++)
+        out << s[i] << ";\n";
+    return out;
+}
 
-	TreeIterator<T> iterator;
-
-	TreeIterator<T> begin() { return TreeIterator<T>(Tree<T>::Min()); }
-	TreeIterator<T> end() { return TreeIterator<T>(Tree<T>::Max()); }
-};
-
+bool TeamsFilter (Statistics t, int threshold)
+{
+    return t.num_wins > threshold;
+}
 
 int main()
 {
-	IteratedTree<double> T;
-	int arr[15];
-	int i = 0;
-	for (i = 0; i < 15; i++) arr[i] = (int)(100 * cos(15 * double(i)));
-	for (i = 0; i < 15; i++) T.push(arr[i]);
-	T.push(150);
+    map<string, Statistics> teams;
+    addItem(teams, string("Lions City1"), Statistics(10, 5, 3, 30));
+    addItem( teams, string("Tigers City2"), Statistics(8, 7, 2, 29));
+    addItem( teams, string("Bears City3"), Statistics(12, 3, 2, 35));
+    addItem( teams, string("Eagles City4"), Statistics(8, 7, 2, 29));
+    addItem( teams, string("Wolves City5"), Statistics(10, 5, 3, 30));
+    addItem( teams, string("Dolphins City6"), Statistics(6, 6, 6, 24));
+    addItem( teams, string("Panthers City7"), Statistics(10, 5, 3, 30));
+    cout << "\nSport teams:\n";
+    cout << teams;
 
-	Node<double>* M = T.Min();
-	cout << "\nMin = " << M->getData() << "\tFind " << arr[3] << ": " << T.Find(arr[3]);
+    cout << "\nFinding Dolphins City6: " << findValueByKey(teams, string("Dolphins City6"));
+    cout << "\nFinding Statistics(10, 5, 3, 30): " << findKeysByValue(teams, Statistics(10, 5, 3, 30)) << "\n";
 
-	void (*f_ptr)(Node<double>*); f_ptr = print;
-	/*cout << "\n-----\nPreorder:";
-	T.PreOrder(T.getRoot(), f_ptr);*/
-	//cout << "\n-----\nInorder:";
-	//T.InOrder(T.getRoot(), f_ptr);
-	/*cout << "\n-----\nPostorder:";
-	T.PostOrder(T.getRoot(), f_ptr);*/
-	cout << "\nIterators:\n";
-	T.iterator = T.begin();
-	while (T.iterator != T.end())
-	{
-		cout << *T.iterator << " ";
-		T.iterator++;
-	}
-	cout << *T.iterator << " ";
+    cout << "\nUnique statistics:\n" << getUniqueValues(teams);
 
-	char c; cin >> c;
-	return 0;
+    cout << "\nFilterd tree with num_wins > 8:\n" << filter(teams, TeamsFilter, 8);
+
+
+
+    
+    return 0;
 }
