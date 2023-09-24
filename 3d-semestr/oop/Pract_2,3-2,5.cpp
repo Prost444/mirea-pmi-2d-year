@@ -62,27 +62,20 @@ public:
 
 	Node* successor()
 	{
-		Node<T>* current = right;
+		Node<T>* Current;
 		if (right != NULL)
 		{
-			for (; current->left != NULL; current = current->left);
-			return current;
+			Current = right;
+			while (Current->left != NULL)
+				Current = Current->left;
 		}
 		else
 		{
-			if (parent == NULL) return NULL;
-			current = parent;	//для минимума
-			if (current->data > data)
-				return current;
-
-			for (; current->parent != NULL and current->data < data; current = current->parent);
-			if (current->parent == NULL)
-				if (current->data > data)
-					return current;
-				else
-					return NULL;
-			return current;
+			Current = parent;
+			while (Current != NULL && Current->data < data)
+				Current = Current->parent;
 		}
+		return Current;
 	}
 	Node* predecessor()
 	{
@@ -141,10 +134,7 @@ protected:
 
 		//рекурсивный вызов
 		if (Current->getData() > data) return Find_R(data, Current->getLeft());
-
 		if (Current->getData() < data) return Find_R(data, Current->getRight());
-
-
 	}
 public:
 	//доступ к корневому элементу
@@ -178,9 +168,9 @@ public:
 
 		if (Current == NULL)
 			Current = root;
-		for (; Current->getLeft() != NULL; Current = Current->getLeft());
+		while (Current->getLeft() != NULL)
+			Current = Current->getLeft();
 		return Current;
-
 	}
 
 	virtual Node<T>* Max(Node<T>* Current = NULL)
@@ -190,7 +180,6 @@ public:
 		if (Current == NULL) Current = root;
 		for (; Current->getRight() != NULL; Current = Current->getRight());
 		return Current;
-		
 	}
 
 
@@ -266,7 +255,24 @@ protected:
 	Node<T>* RotateRight(Node<T>* p) // правый поворот вокруг p
 	{
 		Node<T>* q = p->getLeft();
-		
+
+		p->setLeft(q->getRight());
+	    q->setRight(p);
+
+		if (p == Tree<T>::root)
+			Tree<T>::root = q;
+		else
+		{
+			if (p->getParent()->getLeft() == p)
+				p->getParent()->setLeft(q);
+			else
+				p->getParent()->setRight(q);
+		}
+
+		q->setParent(p->getParent());
+		p->setParent(q);
+		if(p->getLeft()!=NULL) p->getLeft()->setParent(p);
+
 		fixHeight(p);
 		fixHeight(q);
 		return q;
@@ -275,6 +281,23 @@ protected:
 	Node<T>* RotateLeft(Node<T>* q) // левый поворот вокруг q
 	{
 		Node<T>* p = q->getRight();
+
+		q->setRight(p->getLeft());
+		p->setLeft(q);
+		
+		if (q == Tree<T>::root)
+			Tree<T>::root = p;
+		else
+		{
+			if (q->getParent()->getLeft() == q)
+				q->getParent()->setLeft(p);
+			else
+				q->getParent()->setRight(p);
+		}
+
+		p->setParent(q->getParent());
+		q->setParent(p);
+		if(q->getRight()!=NULL) q->getRight()->setParent(q);
 		
 		fixHeight(q);
 		fixHeight(p);
@@ -287,11 +310,13 @@ protected:
 		fixHeight(p);
 		if (bfactor(p) == 2)
 		{
-			
+			if(bfactor(p->getRight())<0) RotateRight(p->getRight());
+			return RotateLeft(p);
 		}
 		if (bfactor(p) == -2)
 		{
-			
+			if (bfactor(p->getLeft()) > 0) RotateLeft(p->getLeft());
+			return RotateRight(p);
 		}
 
 		return p; // балансировка не нужна
@@ -352,17 +377,18 @@ public:
 	Node<ValueType>& operator*() { return *ptr; }
 	TreeIterator& operator++() //++p;
 	{
-		if(ptr!=NULL) ptr = ptr->successor();
+		if(ptr!=NULL)
+			ptr = ptr->successor();
 		return *this;
 	}
-	TreeIterator operator++(int v) //p++;
+	TreeIterator operator++(int v) //x = p++;
 	{
 		Node<ValueType>* p = ptr;
-		if (ptr != NULL) ptr = ptr->successor();
-		return TreeIterator(p);
+		if (ptr != NULL)
+			ptr = ptr->successor();
+		return TreeIterator<ValueType>(p);
 	}
 };
-
 //класс итерируемое дерево поиска
 template<class T>
 class IteratedTree : public AVL_Tree<T>
@@ -374,6 +400,41 @@ public:
 
 	TreeIterator<T> begin() { return TreeIterator<T>(Tree<T>::Min()); }
 	TreeIterator<T> end() { return TreeIterator<T>(Tree<T>::Max()); }
+};
+
+template<class T>
+class Splay1 : protected IteratedTree<T>
+{
+public:
+	Splay1<T>() : IteratedTree<T>() {}
+	TreeIterator<T> begin() { return IteratedTree<T>::begin(); }
+	TreeIterator<T> end() { return IteratedTree<T>::end();}
+	TreeIterator<T> push(T data)
+	{
+		if(Tree<T>::root==NULL) return TreeIterator<T>(Tree<T>::push(data));
+		Node<T>* newElem = new Node<T>(data);
+		if (data > Tree<T>::root->getValue())
+			newElem->setLeft(Tree<T>::root);
+		else
+			newElem->setRight(Tree<T>::root);
+		Tree<T>::root->setParent(newElem);
+		Tree<T>::root = newElem;
+		return TreeIterator<T>(Tree<T>::root);
+	}
+	TreeIterator<T> find(T data)
+	{
+		if (Tree<T>::root == NULL) return NULL;
+		Node<T>* found = Tree<T>::find(data);
+		if (found == NULL) return TreeIterator<T>();
+		found = Tree<T>::remove(found);
+		if (data > Tree<T>::root->getValue())
+			found->setLeft(Tree<T>::root);
+		else
+			found->setRight(Tree<T>::root);
+		Tree<T>::root->setParent(found);
+		Tree<T>::root = found;
+		return TreeIterator<T>(Tree<T>::root);
+	}
 };
 
 
