@@ -449,7 +449,6 @@ class SortedQueue : public Queue<T>
 {
 public: 
 	SortedQueue() : Queue<T>() { cout << "\nSortedQueue constructor"; }
-
     Element<T>* push(T obj)
     {
 		Element<T>* x = new Element<T>(obj);
@@ -528,17 +527,31 @@ ostream& operator<<(ostream& out, const SportTeam& s)
     return out;
 }
 
-
-class SortedQueueSportTeam : public IteratedLinkedList<SportTeam>
+template<class T>
+bool base_PriorityKey(T a, T b)
 {
+	return (a > b);
+}
+
+template<class T>
+class SortedPriorityQueue : public IteratedLinkedList<T>
+{
+protected:
+	bool(*PriorityKey)(T, T);
+
 public:
-    SortedQueueSportTeam() : IteratedLinkedList<SportTeam>() { cout << "\nSortedQueueSportTeam constructor"; }
+
+	SortedPriorityQueue(bool(*pk)(T, T) = base_PriorityKey) : IteratedLinkedList<T>()
+	{ 
+		PriorityKey = pk; 
+		cout << "\nSortedPriorityQueue constructor";
+	}
 
     Element<SportTeam>* push(SportTeam obj)
 	{
-		Element<SportTeam>* x = new Element<SportTeam>(obj);
-		ListIterator<SportTeam> it = this->begin();
-		while (it!=NULL && (*it).getValue()>obj)
+		Element<T>* x = new Element<T>(obj);
+		ListIterator<T> it = this->begin();
+		while (it!=NULL && PriorityKey((*it).getValue(), obj))
 			it++;
 
 		if (it == NULL)
@@ -573,10 +586,10 @@ public:
 		return x;
 	}
 
-	SportTeam pop()
+	T pop()
 	{
-		SportTeam x;
-		ListIterator<SportTeam> next = this->begin()++;
+		T x;
+		ListIterator<T> next = this->begin()++;
 		x = (*(this->begin())).getValue();
 		if (this->num>1)
 		{
@@ -597,6 +610,7 @@ bool FractionFilter(Fraction f)
 	double a=0.5;
 	return abs(f) < a;
 }
+
 
 
 int main()
@@ -648,7 +662,7 @@ int main()
 		cout << QS << "\n";
 
         cout << "\npush with use of iterators:\n";
-		SortedQueueSportTeam teams;
+		SortedPriorityQueue<SportTeam> teams;
 		teams.push(SportTeam("Lions", "City1", 10, 5, 3, 30)); cout << teams << '\n';
 		teams.push(SportTeam("Tigers", "City2", 8, 7, 2, 29)); cout << teams << '\n';
 		teams.push(SportTeam("Bears", "City3", 12, 3, 2, 35));
@@ -661,7 +675,7 @@ int main()
 
 		cout << "Popped with use of iterators: " << teams.pop() << "\n\n";
 		cout << teams << '\n';
-			return 0;
+		return 0;
 		}
 	
 	catch (IteratorException &e)
