@@ -175,8 +175,8 @@ template<class K, class V>
 vector<V> findValuesByKey(multimap<K, V> m, K key) 
 {
     vector<V> res;
-    for(typename multimap<K, V>::iterator it = m.begin(); it != m.end(); it++)
-        if (it->first == key)
+    pair<typename multimap<K, V>::iterator, typename multimap<K, V>::iterator> found = m.equal_range(key);
+    for(typename multimap<K, V>::iterator it = found.first; it != found.second; it++)
             res.push_back(it->second);
     if (res.size())
         return res;
