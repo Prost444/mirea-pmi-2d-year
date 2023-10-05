@@ -1,6 +1,38 @@
+/* 
+Лазарев Александр КМБО-03-22
+Вариант 15
 
+Про решение в 1600 строк :)
+
+В секции 1 вновь подумал над здачей 1.5 и понял, что решил ее не очень-то и правильно. 
+Теперь класс решения является шаблонным, а хранение элементов по убыванию приоритета происходит при помощи функции
+Prority_Key, значение которой можно передать в конструктор. По умолчанию она задается функцией base_PriorityKey (то
+есть >). Для удобства я решил переопределить ее для своего класса, хотя можно было бы этого не делать и передать
+нужное сравнение в конструктор.
+
+В секции 2 (решение задачи 2.3) с использованием итераторов переопределены ВСЕ методы сбалансированного дерева поиска, 
+не знаю, насколько это было целесеобразно. Уже под конец мучений с этой задачей понял, что можно было переопределить 
+методы класса узла в классе итератора, что сильно улучшило бы читаемость кода, но едва ли уменьшило число строк в нем. 
+В следующий раз так и сделаю, но все это исправлять я не решился.
+
+В секции 3 (решение задачи 2.4) проверка на равенство ключей аналогична исправлениям из секции 1ю Добавлено поле KeyCompare,
+по умолчанию равное base_KeyCompare (то есть ==). Кстати сравнение ключей всегда происходит при помощи операторов >, <, 
+хотя можно было бы в конец отчаяться и передавать фунции, указывающие как это делать.
+В итоге дерево поиска хранит (согласлно операциям > < на ключах) очередеи с приоритетами (согласно Priority_Key), что
+выглядит максимально круто. Возможны 2 варианта удаления: по ключу (удаляет всю вершину) и по значению (удаляет элемент 
+в очереди или всю вешину, если в очереди был всего 1 элемент). Как и поиск, удаление может принимать операцию сравнения,
+требуемую для определения совпадения, по умолчанию base_equals (то есть ==).
+
+В секции 4 (решение задачи 2.5) можно было сделать красивее. В коде Splay дерева на Хабре поворот реализован при помощи
+операции Rotate (сама понимает ккакой поворот нужен: левый или правый). Но в моей реализации четко ведны все зиги и заги,
+поэтому было решено оставить слегка громоздкую реализацию.
+*/
+
+
+// Секция 1
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #include <iostream>
-#include <vector>
 #include <string>
 #include <fstream>
 
@@ -598,6 +630,15 @@ bool base_KeyCompare(SportTeam a, SportTeam b)
 	return a.name == b.name && a.city == b.city;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+// Секция 2
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 //узел
 template<class T>
 class Node
@@ -654,7 +695,7 @@ public:
 		height = h;
 	}
 
-	template<class T1> friend ostream& operator<< (ostream& stream, Node<T1>& N);
+	template<class T1> friend ostream& operator<< (ostream& stream, const Node<T1>& N);
 
 	Node* successor()
 	{
@@ -693,13 +734,13 @@ public:
 };
 
 template<class T>
-ostream& operator<< (ostream& stream, Node<T>& N)
+ostream& operator<< (ostream& stream, const Node<T>& N)
 {
 	stream << "\nNode data: " << N.data << ", height: " << N.height;
 	return stream;
 }
 template<class T>
-void print(Node<T>* N) { cout << "\n" << N->getData() << ' ' << N->getHeight(); }
+void print(Node<T>* N) { cout << "\n" << N->getData() << " h=" << N->getHeight(); }
 
 template<class T>
 class Tree
@@ -762,7 +803,8 @@ public:
 	{
 		Node<T>* N = new Node<T>;
 		N->setData(n);
-		return push(N);
+		push(N);
+		return N;
 	}
 
 	virtual Node<T>* Find(T data, bool(*equals)(T, T) = NULL)
@@ -1034,6 +1076,7 @@ public:
 
 	bool operator!=(TreeIterator const& other) const { return ptr != other.ptr; }
 	bool operator==(TreeIterator const& other) const { return ptr == other.ptr; }
+	bool operator==(Node<ValueType>* const& other) const { return ptr == other; }
 	Node<ValueType>& operator*() { return *ptr; }
 	TreeIterator& operator++() //++p;
 	{
@@ -1347,12 +1390,20 @@ public:
 template<class T> ostream& operator<< (ostream& stream, IteratedTree<T>& N)
 {
 	for (TreeIterator<T> i = N.begin(); i != N.end(); ++i)
-		stream << (*i).getData() << ' ';
+		stream << (*i).getData() << '\n';
 	if (N.end() != NULL)
 		stream << (*N.end()).getData();
 	return stream;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+// Секция 3
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template <class T>
 class IteratedMultiKeyTree : public IteratedTree<SortedPriorityQueue<T>>
 {
@@ -1478,48 +1529,91 @@ ostream& operator<< (ostream& stream, IteratedMultiKeyTree<T>& N)
 	return stream;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+// Секция 4
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template<class T>
-class Splay1 : protected IteratedTree<T>
+class SplayTree : public IteratedTree<T>
 {
+protected:
+	TreeIterator<T> splay(TreeIterator<T> x)
+	{
+		while ((*x).getParent() != NULL)
+		{
+			if ((*x).getParent()->getParent() == NULL)
+			{
+				if (x == (*x).getParent()->getLeft()) 									//zig
+					IteratedTree<T>::RotateRight(TreeIterator<T>((*x).getParent()));
+				else																	//zag
+					IteratedTree<T>::RotateLeft(TreeIterator<T>((*x).getParent()));;
+			}
+			else if(x == (*x).getParent()->getLeft() && (*x).getParent()->getParent()->getLeft() == (*x).getParent())	//zig-zig
+			{
+				IteratedTree<T>::RotateRight(TreeIterator<T>((*x).getParent()->getParent()));
+				IteratedTree<T>::RotateRight(TreeIterator<T>((*x).getParent()));
+			}
+			else if(x == (*x).getParent()->getRight() && (*x).getParent()->getParent()->getRight() == (*x).getParent()) //zag-zag
+			{
+				IteratedTree<T>::RotateLeft(TreeIterator<T>((*x).getParent()->getParent()));
+				IteratedTree<T>::RotateLeft(TreeIterator<T>((*x).getParent()));;
+			}
+			else if(x == (*x).getParent()->getRight() && (*x).getParent()->getParent()->getLeft() == (*x).getParent()) //zig-zag
+			{
+				IteratedTree<T>::RotateLeft(TreeIterator<T>((*x).getParent()));;
+				IteratedTree<T>::RotateRight(TreeIterator<T>((*x).getParent()));
+			}
+			else																									  //zag-zig
+			{
+				IteratedTree<T>::RotateRight(TreeIterator<T>((*x).getParent()));
+				IteratedTree<T>::RotateLeft(TreeIterator<T>((*x).getParent()));;
+			}
+		}
+		return x;
+	}
+
 public:
-	Splay1<T>() : IteratedTree<T>() {}
+	SplayTree<T>() : IteratedTree<T>() {}
 	TreeIterator<T> begin() { return IteratedTree<T>::begin(); }
 	TreeIterator<T> end() { return IteratedTree<T>::end();}
-	TreeIterator<T> push(T data)
+	TreeIterator<T> Push(T data)
 	{
-		if(Tree<T>::root==NULL) return TreeIterator<T>(Tree<T>::push(data));
-		Node<T>* newElem = new Node<T>(data);
-		if (data > Tree<T>::root->getValue())
-			newElem->setLeft(Tree<T>::root);
-		else
-			newElem->setRight(Tree<T>::root);
-		Tree<T>::root->setParent(newElem);
-		Tree<T>::root = newElem;
-		return TreeIterator<T>(Tree<T>::root);
+		return splay(Tree<T>::push(data));
 	}
-	TreeIterator<T> find(T data)
+	TreeIterator<T> find(T data, bool(*equals)(T, T)=base_equals)
 	{
-		if (Tree<T>::root == NULL) return NULL;
-		Node<T>* found = Tree<T>::find(data);
-		if (found == NULL) return TreeIterator<T>();
-		found = Tree<T>::remove(found);
-		if (data > Tree<T>::root->getValue())
-			found->setLeft(Tree<T>::root);
-		else
-			found->setRight(Tree<T>::root);
-		Tree<T>::root->setParent(found);
-		Tree<T>::root = found;
-		return TreeIterator<T>(Tree<T>::root);
+		return splay(IteratedTree<T>::find(data, equals));
 	}
+
+	Node<T> operator [] (T data)
+	{
+		return *find(data);
+	}
+
+	template<class T1> friend ostream& operator<< (ostream& stream, SplayTree<T1>& N);
 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 
 int main()
 {
-	IteratedTree<double> tree; //Сбалансированное дерево поиска, работающее на итераторах
-	for (int i = 14; i >= 0; i--) { tree.Push(i); }
-	void (*f_ptr)(Node<double>*); f_ptr = print;
+	IteratedTree<SportTeam> tree; //Сбалансированное дерево поиска, работающее на итераторах
+	tree.Push(SportTeam("Lions", "City1", 10, 5, 3, 30));
+	tree.Push(SportTeam("Tigers", "City2", 8, 7, 2, 29));
+	tree.Push(SportTeam("Bears", "City3", 12, 3, 2, 35));
+	tree.Push(SportTeam("Eagles", "City4", 8, 7, 2, 29));
+	tree.Push(SportTeam("Wolves", "City5", 10, 5, 3, 30));
+	tree.Push(SportTeam("Dolphins", "City6", 6, 6, 6, 24));
+	tree.Push(SportTeam("Panthers", "City7", 10, 5, 3, 30));
+	void (*f_ptr)(Node<SportTeam>*); f_ptr = print;
 	cout << "\n-----\nPreorder:";
 	tree.PreOrder(tree.getRoot(), f_ptr);
 	cout << "\n-----\nInorder:";
@@ -1527,8 +1621,8 @@ int main()
 	cout << "\n-----\nPostorder:";
 	tree.PostOrder(tree.getRoot(), f_ptr);
 	cout << "\n\nInorder standart output with use of iterators:\n" << tree;
-	cout << "\n\nSearch for element 11:" << *(tree.find(11));
-	cout << "\n\nRemoving element 7:" << (*tree.remove(7)); 
+	cout << "\n\nSearch for element Bears, City3, 12, 3, 2, 35:" << *(tree.find(SportTeam("Bears", "City3", 12, 3, 2, 35)));
+	cout << "\n\nRemoving element Dolphins, City6, 6, 6, 6, 24:" << (*tree.remove(SportTeam("Dolphins", "City6", 6, 6, 6, 24))); 
 	cout << "\n\nAfter removing element 7:\n" << tree;
 
 	
@@ -1546,7 +1640,7 @@ int main()
 
 	cout << "\n\nSearch tree with matching keys:\n" << T;
 
-	cout << "\n\nSearching node with element SportTeam(Panthers, City7, 10, 5, 3, 30):"
+	cout << "\n\nSearching for node with element SportTeam(Panthers, City7, 10, 5, 3, 30):"
 	<< *T.find(SportTeam("Panthers", "City7", 10, 5, 3, 30), base_equals) << '\n';
 	cout << "\nOperator [] overload with searching by key:\n" << T[SportTeam("Panthers", "City7")] << '\n';
 
@@ -1555,5 +1649,23 @@ int main()
 
 	cout << "\n\nRemoving Panthers City7 10 5 3 30 in tree node: " << T.remove(SportTeam("Panthers", "City7", 10, 5, 3, 30)); 
 	cout << "\n\nAfter removing Panthers City7 10 5 3 30 in tree node:\n" << T;
+
+	SplayTree<SportTeam> spl;
+	cout << "\n\n\nPushing different elements into the splay tree:";
+	cout << *spl.Push(SportTeam("Lions", "City1", 10, 5, 3, 30));
+	cout << *spl.Push(SportTeam("Tigers", "City2", 8, 7, 2, 29));
+	cout << *spl.Push(SportTeam("Bears", "City3", 12, 3, 2, 35));
+	cout << *spl.Push(SportTeam("Eagles", "City4", 8, 7, 2, 29));
+	cout << *spl.Push(SportTeam("Wolves", "City5", 10, 5, 3, 30));
+	cout << *spl.Push(SportTeam("Dolphins", "City6", 6, 6, 6, 24));
+	cout << *spl.Push(SportTeam("Panthers", "City7", 10, 5, 3, 30));
+	cout << "\n-----\nInorder:";
+	spl.InOrder(spl.getRoot(), f_ptr);
+	cout << "\n\nSearching for node with element SportTeam(Dolphins, City6, 6, 6, 6, 24):" << *spl.find(SportTeam("Dolphins", "City6", 6, 6, 6, 24)); 
+	cout << "\n\nSplay tree after searching:";
+	spl.InOrder(spl.getRoot(), f_ptr);
+	cout << "\n\nElement spl[SportTeam(Wolves, City5, 10, 5, 3, 30)]: " << spl[SportTeam("Wolves", "City5", 10, 5, 3, 30)];
+	cout << "\n\nSplay tree after searching:";
+	spl.InOrder(spl.getRoot(), f_ptr);
 	return 0;
 }
