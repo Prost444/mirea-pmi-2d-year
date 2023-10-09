@@ -2,6 +2,9 @@
 // ВАРИАТН 15
 #include <iostream>
 #include <queue>
+#include <list>
+#include <vector>
+#include <algorithm>
     
 using namespace std;
 
@@ -403,6 +406,165 @@ ostream& operator<< (ostream& out, Heap<T> heap)
 	out << "}";
 	return out;
 }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+// 3.3
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+template <class V> class FibonacciHeap;
+
+template <class V> struct FibNode {
+private:
+	typename list<FibNode<V>*>::iterator self;
+	typename list<FibNode<V>*>::iterator parent;
+	list<FibNode<V>*> children;
+	V priority;
+	int degree;
+public:
+	friend class FibonacciHeap<V>;
+	typename list<FibNode<V>*>::iterator getSelf() { return self; }
+	typename list<FibNode<V>*>::iterator getParent() { return parent; }
+	list<FibNode<V>*> getChildren() { return children; }
+	V getpriority() { return priority; }
+
+	bool hasChildren() { return !children.empty(); }
+	bool hasParent() { return parent != children.end(); }
+};
+
+template <class V> class FibonacciHeap
+{
+protected:
+	list<FibNode<V>*> heap;
+	typename list<FibNode<V>*>::iterator max;
+	//сравнение приоритетов
+	bool (*less_priority)(V, V);
+	bool (*greater_priority)(V, V);
+public:
+
+	FibonacciHeap<V>(bool(*less)(V, V) = base_less_priority, bool (*greater)(V, V) = base_greater_priority)
+	{
+		heap.clear();
+		max = heap.end();
+		less_priority = less;
+		greater_priority = greater;
+	}
+	virtual ~FibonacciHeap()
+	{
+		if (!heap.empty())
+		{
+			for(typename list<FibNode<V>*>::iterator it = heap.begin(); it != heap.end(); ++it)
+				delete *it;
+			heap.clear();
+		}
+	}
+	FibNode<V>* push(V priority)
+	{
+		FibNode<V>* ret = new FibNode<V>;
+		ret->priority = priority;
+		ret->degree = 0;
+		ret->children.clear();
+		ret->parent = ret->children.end();
+		ret->self = heap.insert(heap.end(), ret);
+		if (heap.size()==1 || greater_priority(ret->priority, (*max)->priority))
+			max = ret->self;
+		return ret;
+	}
+	void merge(FibonacciHeap& other)
+	{
+		heap.splice(heap.end(), other.heap);
+		if (greater_priority((*other.max)->priority, (*max)->priority))
+			max = other.max;
+	}
+
+	bool isEmpty()
+	{
+		return heap.empty();
+	}
+
+	V getMax()
+	{
+        return (*max)->priority;
+    }
+
+	V ExtractMax() 
+	{
+		if (isEmpty())
+			throw HeapException("Heap is empty.");
+
+		FibNode<V>* maxNode = *max;
+		V maxPriority = maxNode->priority;
+
+		if (!maxNode->children.empty())
+			heap.splice(heap.end(), maxNode->children);
+
+		heap.erase(maxNode->self);
+		delete maxNode;
+
+		if (!heap.empty()) 
+			consolidate();
+		else
+			max = heap.end();
+
+		return maxPriority;
+	}
+
+	void consolidate() 
+	{
+		vector<FibNode<V>*> A(heap.size(), nullptr);
+		for (typename list<FibNode<V>*>::iterator it = heap.begin(); it != heap.end(); ++it) 
+		{
+			FibNode<V>* x = *it;
+			int d = x->degree;
+			while (A[d] != nullptr) 
+			{
+				FibNode<V>* y = A[d];
+				if (less_priority(x->priority, y->priority))
+					swap(x, y);
+				_childLink(x, y);
+				A[d] = nullptr;
+				d++;
+			}
+			A[d] = x;
+		}
+
+		heap.clear();
+		max = heap.end();
+		for (int i = 0; i < A.size(); i++) 
+		{
+			if (A[i] != nullptr) 
+			{
+				A[i]->self = heap.insert(heap.end(), A[i]);
+				if (max == heap.end() || greater_priority(A[i]->priority, (*max)->priority))
+					max = A[i]->self;
+			}
+		}
+	}
+
+	void _childLink(FibNode<V>* parent, FibNode<V>* child) 
+	{
+		parent->children.push_back(child);
+		if (!child->children.empty())
+			parent->children.splice(parent->children.end(), child->children);
+		parent->degree += child->degree;
+		child->children.clear();
+		parent->degree++;
+	}
+	
+	void printWithExtractMax()
+	{
+		cout << "{\n";
+		int sz = heap.size();
+		for (int i = 0; i < sz; i++)
+		{
+			cout <<  "  " << ExtractMax() << ";\n";
+		}
+		cout << "}";
+	}
+};
 
 
 int main()
@@ -429,5 +591,16 @@ int main()
 	cout << "\n\nHeap:\n" << Heap;
 	cout << "\n\nRemoving 3d element: " << Heap.remove(3);
 	cout << "\n\nHeap after removind 3d element:\n" << Heap;
+
+	FibonacciHeap<SportTeam> FH(SportTeam_less_priority, SportTeam_greater_priority);
+	FH.push(SportTeam("Lions", "City1", 10, 5, 3, 30));
+	FH.push(SportTeam("Tigers", "City2", 8, 7, 2, 29));
+	FH.push(SportTeam("Bears", "City3", 12, 3, 2, 35));
+	FH.push(SportTeam("Eagles", "City4", 8, 7, 2, 29));
+	FH.push(SportTeam("Wolves", "City5", 10, 5, 3, 30));
+	FH.push(SportTeam("Dolphins", "City6", 6, 6, 6, 24));
+	FH.push(SportTeam("Panthers", "City7", 10, 5, 3, 30));
+	cout << "\n\nPrinting fibonacci heap with use of ExtractMax()\n";
+	FH.printWithExtractMax();
 	return 0;
 }
